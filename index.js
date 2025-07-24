@@ -8,10 +8,10 @@ const app = express();
 const port = 3000;
 
 const db = new pg.Client({
-    user: "postgres",
-    host: "localhost",
-    database: "world", // Make sure this is the name of your database
-    password: "B0@hmed1", // Your actual password
+    user: "postgres1",
+    host: "postgresql://postgres1:wkcC3T5fmegOVlscWzSNbCXxLykXJ8Gt@dpg-d20pqpbipnbc73dhvv50-a/world_8tpt",
+    database: "world_8tpt", // Make sure this is the name of your database
+    password: "wkcC3T5fmegOVlscWzSNbCXxLykXJ8Gt", // Your actual password
     port: 5432,
 });
 db.connect();
