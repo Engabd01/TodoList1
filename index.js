@@ -1,6 +1,5 @@
 // --- 0. Load Environment Variables ---
 // This line loads the variables from your .env file into process.env for local development.
-// It should be at the very top of your file.
 import 'dotenv/config';
 
 // --- 1. Import Required Packages ---
@@ -12,16 +11,37 @@ import pg from "pg";
 const app = express();
 const port = 3000;
 
-// This is the correct configuration for connecting to a database in a cloud environment like Render.
-// It uses the DATABASE_URL environment variable.
 const db = new pg.Client({
     connectionString: process.env.DATABASE_URL,
-    // SSL is required for Render's free tier databases.
     ssl: {
       rejectUnauthorized: false
     }
 });
 db.connect();
+
+// --- NEW: Setup Database Schema on Startup ---
+// This async function will run once when the server starts.
+async function setupDatabase() {
+    try {
+        // The "IF NOT EXISTS" clause prevents an error from occurring if the table already exists.
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                task TEXT NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                time_required_mins INT,
+                note TEXT,
+                done BOOLEAN DEFAULT FALSE
+            );
+        `);
+        console.log("Database schema is ready.");
+    } catch (err) {
+        console.error("Error setting up database schema:", err);
+    }
+}
+// Call the setup function right after connecting to the database.
+setupDatabase();
+
 
 // --- 3. Middleware ---
 app.use(express.static("public"));
@@ -39,6 +59,10 @@ app.get("/", async (req, res) => {
         res.render("index.ejs", { tasks: tasks });
     } catch (err) {
         console.error("Error fetching tasks:", err);
+        // Send a more user-friendly error page if the table doesn't exist yet
+        if (err.code === '42P01') { // '42P01' is the error code for "undefined_table"
+            return res.status(500).send("The 'tasks' table was not found. Please ensure the database setup has completed and restart the server.");
+        }
         res.status(500).send("Error fetching tasks");
     }
 });
