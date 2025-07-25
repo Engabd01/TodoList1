@@ -1,3 +1,8 @@
+// --- 0. Load Environment Variables ---
+// This line loads the variables from your .env file into process.env for local development.
+// It should be at the very top of your file.
+import 'dotenv/config';
+
 // --- 1. Import Required Packages ---
 import express from "express";
 import bodyParser from "body-parser";
@@ -7,12 +12,14 @@ import pg from "pg";
 const app = express();
 const port = 3000;
 
+// This is the correct configuration for connecting to a database in a cloud environment like Render.
+// It uses the DATABASE_URL environment variable.
 const db = new pg.Client({
-    user: "postgres1",
-    host: "postgresql://postgres1:wkcC3T5fmegOVlscWzSNbCXxLykXJ8Gt@dpg-d20pqpbipnbc73dhvv50-a.oregon-postgres.render.com/world_8tpt",
-    database: "world_8tpt", // Make sure this is the name of your database
-    password: "wkcC3T5fmegOVlscWzSNbCXxLykXJ8Gt", // Your actual password
-    port: 5432,
+    connectionString: process.env.DATABASE_URL,
+    // SSL is required for Render's free tier databases.
+    ssl: {
+      rejectUnauthorized: false
+    }
 });
 db.connect();
 
@@ -27,7 +34,6 @@ app.use(bodyParser.json());
 // GET Route: Fetch all tasks and render the main page
 app.get("/", async (req, res) => {
     try {
-        // The query now selects all the new columns as well.
         const result = await db.query("SELECT * FROM tasks ORDER BY id ASC");
         const tasks = result.rows;
         res.render("index.ejs", { tasks: tasks });
@@ -39,10 +45,7 @@ app.get("/", async (req, res) => {
 
 // POST Route: Add a new task with all the new details
 app.post("/tasks", async (req, res) => {
-    // Destructure all the new fields from the request body
     const { task, category, time_required_mins, note } = req.body;
-    
-    // Convert empty string for time to null for the database
     const time = time_required_mins ? parseInt(time_required_mins) : null;
 
     try {
@@ -50,7 +53,6 @@ app.post("/tasks", async (req, res) => {
             "INSERT INTO tasks (task, category, time_required_mins, note) VALUES ($1, $2, $3, $4) RETURNING *",
             [task, category, time, note]
         );
-        // Send back the newly created task object as JSON
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error("Error adding task:", err);
@@ -59,7 +61,6 @@ app.post("/tasks", async (req, res) => {
 });
 
 // PUT Route: Update a task's status (done/not done)
-// This route remains largely the same.
 app.put("/tasks/:id", async (req, res) => {
     const taskId = req.params.id;
     const isDone = req.body.done;
@@ -76,7 +77,6 @@ app.put("/tasks/:id", async (req, res) => {
 });
 
 // DELETE Route: Delete a task
-// This route remains the same.
 app.delete("/tasks/:id", async (req, res) => {
     const taskId = req.params.id;
     try {
