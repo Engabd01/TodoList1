@@ -25,10 +25,50 @@
             padding: 30px; border-radius: 15px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
-        h1 { text-align: center; color: #333; margin-bottom: 25px; }
-        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        h1 { color: #333; }
+        #show-form-btn {
+            padding: 10px 20px; border: none; background-color: #4a90e2;
+            color: white; font-size: 16px; font-weight: 600;
+            border-radius: 8px; cursor: pointer; transition: background-color 0.3s;
+        }
+        #show-form-btn:hover { background-color: #357abd; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1; visibility: visible;
+        }
+        .modal-content {
+            background: #fff; padding: 30px; border-radius: 15px;
+            width: 90%; max-width: 500px;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        .close-btn {
+            position: absolute; top: 15px; right: 15px;
+            background: transparent; border: none;
+            font-size: 24px; cursor: pointer; color: #aaa;
+        }
+
         /* Form Styles */
-        .add-task-form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+        .add-task-form { display: flex; flex-direction: column; gap: 15px; }
         .form-row { display: flex; gap: 10px; }
         .form-group { flex: 1; display: flex; flex-direction: column; }
         .form-group label { margin-bottom: 5px; font-weight: 500; color: #555; font-size: 0.9em; }
@@ -39,14 +79,13 @@
         #add-task-btn {
             padding: 12px; border: none; background-color: #4a90e2;
             color: white; font-size: 16px; font-weight: 600;
-            border-radius: 8px; cursor: pointer; transition: background-color 0.3s;
+            border-radius: 8px; cursor: pointer; margin-top: 10px;
         }
-        #add-task-btn:hover { background-color: #357abd; }
 
         /* Task List Styles */
         #task-list { list-style: none; }
         .task-item {
-            display: flex; align-items: center; gap: 10px; /* Reduced gap slightly */
+            display: flex; align-items: center; gap: 10px;
             padding: 15px 5px; border-bottom: 1px solid #eee;
         }
         .task-content { flex-grow: 1; }
@@ -59,66 +98,23 @@
             flex-shrink: 0;
         }
         .task-item.done .task-content { text-decoration: line-through; color: #aaa; }
-        .task-item.done .task-main-info .category { color: #aaa; }
         .delete-btn {
             background-color: #ff5c5c; color: white; border: none;
             width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
             font-size: 16px; font-weight: bold; display: flex;
             align-items: center; justify-content: center; flex-shrink: 0;
-            transition: background-color 0.3s;
         }
-        .delete-btn:hover { background-color: #e60000; }
-
-        /* Drag and Drop Styles */
-        .drag-handle {
-            cursor: grab;
-            color: #ccc;
-            font-size: 20px;
-            padding: 0 10px;
-        }
-        .drag-handle:hover {
-            color: #888;
-        }
-        .task-item.sortable-ghost {
-            background: #f0f8ff;
-            opacity: 0.8;
-        }
-        .task-item.sortable-chosen {
-            background: #eaf0ff;
-        }
-
+        .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 0 10px; }
+        .task-item.sortable-ghost { background: #f0f8ff; opacity: 0.8; }
     </style>
 </head>
 <body>
+    <!-- Main Content Container -->
     <div class="todo-container">
-        <h1>Advanced Task Manager</h1>
-        <form id="add-task-form">
-            <div class="form-group">
-                <label for="task-input">Task</label>
-                <input type="text" id="task-input" placeholder="What needs to be done?" required>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="category-select">Category</label>
-                    <select id="category-select" required>
-                        <option value="General">General</option>
-                        <option value="Career">Career</option>
-                        <option value="Health">Health</option>
-                        <option value="Personal">Personal</option>
-                        <option value="Finance">Finance</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="time-input">Time (mins)</label>
-                    <input type="number" id="time-input" placeholder="e.g., 30">
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="note-input">Notes</label>
-                <textarea id="note-input" rows="2" placeholder="Add any details..."></textarea>
-            </div>
-            <button type="submit" id="add-task-btn">Add Task</button>
-        </form>
+        <div class="header-container">
+            <h1>Task Manager</h1>
+            <button id="show-form-btn">Add New Task</button>
+        </div>
         
         <ul id="task-list">
             <% if (locals.tasks && tasks.length > 0) { %>
@@ -145,15 +141,65 @@
         </ul>
     </div>
 
+    <!-- Modal for Adding a New Task -->
+    <div class="modal-overlay" id="add-task-modal">
+        <div class="modal-content">
+            <button class="close-btn" id="close-modal-btn">&times;</button>
+            <h2>Add a New Task</h2>
+            <form id="add-task-form">
+                <div class="form-group">
+                    <label for="task-input">Task</label>
+                    <input type="text" id="task-input" placeholder="What needs to be done?" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="category-select">Category</label>
+                        <select id="category-select" required>
+                            <option value="General">General</option>
+                            <option value="Career">Career</option>
+                            <option value="Health">Health</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Finance">Finance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="time-input">Time (mins)</label>
+                        <input type="number" id="time-input" placeholder="e.g., 30">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="note-input">Notes</label>
+                    <textarea id="note-input" rows="2" placeholder="Add any details..."></textarea>
+                </div>
+                <button type="submit" id="add-task-btn">Add Task</button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        const taskForm = document.getElementById('add-task-form');
+        // --- Get DOM Elements ---
         const taskList = document.getElementById('task-list');
+        const showFormBtn = document.getElementById('show-form-btn');
+        const modal = document.getElementById('add-task-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const taskForm = document.getElementById('add-task-form');
+
+        // --- Modal Control ---
+        function showModal() { modal.classList.add('visible'); }
+        function hideModal() { modal.classList.remove('visible'); }
+
+        showFormBtn.addEventListener('click', showModal);
+        closeModalBtn.addEventListener('click', hideModal);
+        modal.addEventListener('click', (event) => {
+            // Close modal if user clicks on the overlay background
+            if (event.target === modal) {
+                hideModal();
+            }
+        });
 
         // --- Initialize Drag and Drop ---
         new Sortable(taskList, {
-            handle: '.drag-handle', // Specify the drag handle
-            animation: 150, // Animation speed
-            ghostClass: 'sortable-ghost' // Class for the drop placeholder
+            handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost'
         });
 
         // --- Event Listener for form submission (Adding a new task) ---
@@ -180,12 +226,9 @@
                     const newTask = await response.json();
                     addTaskToUI(newTask);
                     taskForm.reset();
-                } else {
-                    console.error('Failed to add task');
-                }
-            } catch (err) {
-                console.error('Error:', err);
-            }
+                    hideModal(); // Hide modal after successful submission
+                } else { console.error('Failed to add task'); }
+            } catch (err) { console.error('Error:', err); }
         });
 
         // --- Event Listener for clicks on the task list (for checkbox and delete) ---
@@ -193,15 +236,13 @@
             const target = event.target;
             const taskItem = target.closest('.task-item');
             if (!taskItem) return;
-
             const taskId = taskItem.dataset.id;
 
             if (target.classList.contains('delete-btn')) {
                 try {
                     const response = await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
-                    if (response.ok) {
-                        taskItem.remove();
-                    } else { console.error('Failed to delete task'); }
+                    if (response.ok) { taskItem.remove(); } 
+                    else { console.error('Failed to delete task'); }
                 } catch (err) { console.error('Error:', err); }
             }
 
