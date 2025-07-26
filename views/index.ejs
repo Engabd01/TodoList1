@@ -31,11 +31,12 @@
             align-items: center;
             margin-bottom: 25px;
         }
-        h1 { color: #333; }
+        h1 { color: #333; font-size: 2rem; }
         #show-form-btn {
             padding: 10px 20px; border: none; background-color: #4a90e2;
             color: white; font-size: 16px; font-weight: 600;
             border-radius: 8px; cursor: pointer; transition: background-color 0.3s;
+            white-space: nowrap; /* Prevents button text from wrapping */
         }
         #show-form-btn:hover { background-color: #357abd; }
 
@@ -47,6 +48,7 @@
             display: flex; justify-content: center; align-items: center;
             opacity: 0; visibility: hidden;
             transition: opacity 0.3s, visibility 0.3s;
+            z-index: 1000;
         }
         .modal-overlay.visible {
             opacity: 1; visibility: visible;
@@ -106,6 +108,38 @@
         }
         .drag-handle { cursor: grab; color: #ccc; font-size: 20px; padding: 0 10px; }
         .task-item.sortable-ghost { background: #f0f8ff; opacity: 0.8; }
+        
+        /* --- NEW: Responsive Styles for Mobile --- */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 10px; /* Reduce overall padding */
+            }
+            .todo-container, .modal-content {
+                padding: 20px; /* Reduce padding inside containers */
+            }
+            .header-container {
+                flex-direction: column; /* Stack header items */
+                align-items: stretch; /* Make items take full width */
+                gap: 15px;
+            }
+            h1 {
+                font-size: 1.8rem; /* Smaller title */
+                text-align: center;
+            }
+            #show-form-btn {
+                width: 100%; /* Make button full width */
+                padding: 12px;
+            }
+            .form-row {
+                flex-direction: column; /* Stack category and time inputs */
+            }
+            .task-main-info {
+                font-size: 1rem; /* Smaller task font size */
+            }
+            .drag-handle {
+                padding: 0 5px; /* Less space for drag handle */
+            }
+        }
     </style>
 </head>
 <body>
