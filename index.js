@@ -1,5 +1,4 @@
 // --- 0. Load Environment Variables ---
-// This line loads the variables from your .env file into process.env for local development.
 import 'dotenv/config';
 
 // --- 1. Import Required Packages ---
@@ -18,15 +17,12 @@ const db = new pg.Client({
     }
 });
 
-// --- NEW: Main startup function to control order of operations ---
+// --- Main startup function to control order of operations ---
 async function startServer() {
     try {
-        // First, connect to the database
         await db.connect();
         console.log("Database connected successfully.");
 
-        // Then, set up the database schema
-        // The "IF NOT EXISTS" clause prevents an error if the table already exists.
         await db.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -39,20 +35,17 @@ async function startServer() {
         `);
         console.log("Database schema is ready.");
 
-        // Only after the database is ready, start the web server
         app.listen(port, () => {
             console.log(`Server running on http://localhost:${port}`);
         });
 
     } catch (err) {
         console.error("Failed to setup database or start server:", err);
-        process.exit(1); // Exit the process with an error code
+        process.exit(1);
     }
 }
 
-// Call the main startup function
 startServer();
-
 
 // --- 3. Middleware ---
 app.use(express.static("public"));
@@ -74,11 +67,10 @@ app.get("/", async (req, res) => {
     }
 });
 
-// POST Route: Add a new task with all the new details
+// POST Route: Add a new task
 app.post("/tasks", async (req, res) => {
     const { task, category, time_required_mins, note } = req.body;
     const time = time_required_mins ? parseInt(time_required_mins) : null;
-
     try {
         const result = await db.query(
             "INSERT INTO tasks (task, category, time_required_mins, note) VALUES ($1, $2, $3, $4) RETURNING *",
@@ -91,6 +83,27 @@ app.post("/tasks", async (req, res) => {
     }
 });
 
+// --- NEW: PUT Route to update an existing task ---
+app.put("/tasks/update/:id", async (req, res) => {
+    const taskId = req.params.id;
+    const { task, category, time_required_mins, note } = req.body;
+    const time = time_required_mins ? parseInt(time_required_mins) : null;
+    try {
+        const result = await db.query(
+            "UPDATE tasks SET task = $1, category = $2, time_required_mins = $3, note = $4 WHERE id = $5 RETURNING *",
+            [task, category, time, note, taskId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Task not found" });
+        }
+        res.status(200).json(result.rows[0]); // Send back the updated task
+    } catch (err) {
+        console.error("Error updating task:", err);
+        res.status(500).json({ error: "Error updating task" });
+    }
+});
+
+
 // PUT Route: Update a task's status (done/not done)
 app.put("/tasks/:id", async (req, res) => {
     const taskId = req.params.id;
@@ -102,8 +115,8 @@ app.put("/tasks/:id", async (req, res) => {
         );
         res.sendStatus(200); // OK
     } catch (err) {
-        console.error("Error updating task:", err);
-        res.status(500).json({ error: "Error updating task" });
+        console.error("Error updating task status:", err);
+        res.status(500).json({ error: "Error updating task status" });
     }
 });
 
