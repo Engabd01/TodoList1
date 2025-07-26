@@ -17,13 +17,16 @@ const db = new pg.Client({
       rejectUnauthorized: false
     }
 });
-db.connect();
 
-// --- NEW: Setup Database Schema on Startup ---
-// This async function will run once when the server starts.
-async function setupDatabase() {
+// --- NEW: Main startup function to control order of operations ---
+async function startServer() {
     try {
-        // The "IF NOT EXISTS" clause prevents an error from occurring if the table already exists.
+        // First, connect to the database
+        await db.connect();
+        console.log("Database connected successfully.");
+
+        // Then, set up the database schema
+        // The "IF NOT EXISTS" clause prevents an error if the table already exists.
         await db.query(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -35,12 +38,20 @@ async function setupDatabase() {
             );
         `);
         console.log("Database schema is ready.");
+
+        // Only after the database is ready, start the web server
+        app.listen(port, () => {
+            console.log(`Server running on http://localhost:${port}`);
+        });
+
     } catch (err) {
-        console.error("Error setting up database schema:", err);
+        console.error("Failed to setup database or start server:", err);
+        process.exit(1); // Exit the process with an error code
     }
 }
-// Call the setup function right after connecting to the database.
-setupDatabase();
+
+// Call the main startup function
+startServer();
 
 
 // --- 3. Middleware ---
@@ -59,11 +70,7 @@ app.get("/", async (req, res) => {
         res.render("index.ejs", { tasks: tasks });
     } catch (err) {
         console.error("Error fetching tasks:", err);
-        // Send a more user-friendly error page if the table doesn't exist yet
-        if (err.code === '42P01') { // '42P01' is the error code for "undefined_table"
-            return res.status(500).send("The 'tasks' table was not found. Please ensure the database setup has completed and restart the server.");
-        }
-        res.status(500).send("Error fetching tasks");
+        res.status(500).send("An error occurred while fetching tasks. Please check the server logs.");
     }
 });
 
@@ -110,10 +117,4 @@ app.delete("/tasks/:id", async (req, res) => {
         console.error("Error deleting task:", err);
         res.status(500).json({ error: "Error deleting task" });
     }
-});
-
-
-// --- 5. Start Server ---
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
 });
