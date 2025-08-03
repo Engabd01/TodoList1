@@ -94,7 +94,7 @@ app.get('/', async (req, res) => {
         <!-- Form to add new notes (improved layout) -->
         <div class="bg-white shadow-lg rounded-lg overflow-hidden p-4 sm:p-6">
           <h2 class="text-xl font-bold text-gray-900 mb-4">Add a New Note</h2>
-          <form action="/add-note" method="POST" class="flex flex-col sm:flex-row items-end gap-4">
+          <form id="add-note-form" action="/add-note" method="POST" class="flex flex-col sm:flex-row items-end gap-4">
             <div class="flex-1 w-full">
               <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
               <input type="text" id="title" name="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
@@ -103,9 +103,14 @@ app.get('/', async (req, res) => {
               <label for="content" class="block text-sm font-medium text-gray-700">Content</label>
               <textarea id="content" name="content" rows="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 resize-none" required></textarea>
             </div>
-            <button type="submit" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Add Note
-            </button>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button type="button" id="generate-ai-btn" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                Generate with AI
+              </button>
+              <button type="submit" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Add Note
+              </button>
+            </div>
           </form>
         </div>
 
@@ -145,6 +150,9 @@ app.get('/', async (req, res) => {
           const tableContainer = document.getElementById('table-container');
           const plusIcon = document.getElementById('toggle-icon-plus');
           const minusIcon = document.getElementById('toggle-icon-minus');
+          const generateButton = document.getElementById('generate-ai-btn');
+          const titleInput = document.getElementById('title');
+          const contentInput = document.getElementById('content');
           
           if (tableContainer.children.length > 0 && tableContainer.children[0].getElementsByTagName('tbody')[0].getElementsByTagName('tr').length > 0) {
             tableContainer.classList.remove('hidden');
@@ -162,6 +170,61 @@ app.get('/', async (req, res) => {
               plusIcon.classList.remove('hidden');
               minusIcon.classList.add('hidden');
             }
+          });
+          
+          // Function to generate a note using AI
+          generateButton.addEventListener('click', async () => {
+              // Show loading state and disable the button
+              generateButton.textContent = 'Generating...';
+              generateButton.disabled = true;
+              
+              // Clear previous inputs
+              titleInput.value = '';
+              contentInput.value = '';
+
+              try {
+                  const prompt = "Generate a short, creative note. The first line should be the title and the following lines should be the content.";
+                  let chatHistory = [];
+                  chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                  const payload = { contents: chatHistory };
+                  const apiKey = "";
+                  const apiUrl = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=\${apiKey}\`;
+                  
+                  const response = await fetch(apiUrl, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                  });
+                  
+                  if (!response.ok) {
+                      throw new Error(\`API request failed with status: \${response.status}\`);
+                  }
+                  
+                  const result = await response.json();
+                  
+                  if (result.candidates && result.candidates.length > 0 &&
+                      result.candidates[0].content && result.candidates[0].content.parts &&
+                      result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    const lines = text.split('\\n');
+                    const title = lines[0];
+                    const content = lines.slice(1).join('\\n').trim();
+
+                    titleInput.value = title;
+                    contentInput.value = content;
+                  } else {
+                    console.error('Unexpected API response structure:', result);
+                    alert('Could not generate note. Please try again.');
+                  }
+                  
+              } catch (error) {
+                  console.error('Error generating note:', error);
+                  alert('Error generating note. Check the console for details.');
+              } finally {
+                  // Revert button state
+                  generateButton.textContent = 'Generate with AI';
+                  generateButton.disabled = false;
+              }
           });
         });
       </script>
