@@ -13,6 +13,8 @@ const port = process.env.PORT || 3000;
 
 // Enable express to parse URL-encoded bodies (for form data)
 app.use(express.urlencoded({ extended: true }));
+// Enable express to parse JSON bodies (for our new AI endpoint)
+app.use(express.json());
 
 // Set up the PostgreSQL connection client using environment variables
 // Database Connection Setup
@@ -112,6 +114,7 @@ app.get('/', async (req, res) => {
               </button>
             </div>
           </form>
+          <div id="error-message" class="mt-4 p-3 bg-red-100 text-red-700 rounded-md hidden"></div>
         </div>
 
         <!-- Collapsible table to display existing notes -->
@@ -153,6 +156,7 @@ app.get('/', async (req, res) => {
           const generateButton = document.getElementById('generate-ai-btn');
           const titleInput = document.getElementById('title');
           const contentInput = document.getElementById('content');
+          const errorMessageDiv = document.getElementById('error-message');
           
           if (tableContainer.children.length > 0 && tableContainer.children[0].getElementsByTagName('tbody')[0].getElementsByTagName('tr').length > 0) {
             tableContainer.classList.remove('hidden');
@@ -181,45 +185,28 @@ app.get('/', async (req, res) => {
               // Clear previous inputs
               titleInput.value = '';
               contentInput.value = '';
+              errorMessageDiv.classList.add('hidden');
 
               try {
-                  const prompt = "Generate a short, creative note. The first line should be the title and the following lines should be the content.";
-                  let chatHistory = [];
-                  chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                  const payload = { contents: chatHistory };
-                  const apiKey = "";
-                  const apiUrl = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=\${apiKey}\`;
-                  
-                  const response = await fetch(apiUrl, {
+                  const response = await fetch('/generate-ai-note', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(payload)
+                      body: JSON.stringify({}) // Sending an empty body
                   });
                   
                   if (!response.ok) {
-                      throw new Error(\`API request failed with status: \${response.status}\`);
+                      throw new Error('Server-side AI generation failed.');
                   }
                   
-                  const result = await response.json();
+                  const { title, content } = await response.json();
                   
-                  if (result.candidates && result.candidates.length > 0 &&
-                      result.candidates[0].content && result.candidates[0].content.parts &&
-                      result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    const lines = text.split('\\n');
-                    const title = lines[0];
-                    const content = lines.slice(1).join('\\n').trim();
-
-                    titleInput.value = title;
-                    contentInput.value = content;
-                  } else {
-                    console.error('Unexpected API response structure:', result);
-                    alert('Could not generate note. Please try again.');
-                  }
+                  titleInput.value = title;
+                  contentInput.value = content;
                   
               } catch (error) {
                   console.error('Error generating note:', error);
-                  alert('Error generating note. Check the console for details.');
+                  errorMessageDiv.textContent = 'Error generating note. Please try again later.';
+                  errorMessageDiv.classList.remove('hidden');
               } finally {
                   // Revert button state
                   generateButton.textContent = 'Generate with AI';
@@ -232,6 +219,50 @@ app.get('/', async (req, res) => {
     </html>
   `);
 });
+
+// A new route to handle server-side AI note generation
+app.post('/generate-ai-note', async (req, res) => {
+    try {
+        const prompt = "Generate a short, creative note. The first line should be the title and the following lines should be the content.";
+        let chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        const payload = { contents: chatHistory };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            console.error('API request failed:', response.status, await response.text());
+            return res.status(response.status).json({ error: 'Failed to fetch from Gemini API' });
+        }
+        
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates.length > 0 &&
+            result.candidates[0].content && result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0) {
+            const text = result.candidates[0].content.parts[0].text;
+            const lines = text.split('\n');
+            const title = lines[0].trim();
+            const content = lines.slice(1).join('\n').trim();
+
+            res.status(200).json({ title, content });
+        } else {
+            console.error('Unexpected API response structure:', result);
+            res.status(500).json({ error: 'Unexpected API response structure' });
+        }
+
+    } catch (error) {
+        console.error('Error in AI generation route:', error);
+        res.status(500).json({ error: 'Internal server error during AI generation' });
+    }
+});
+
 
 // Define a new POST route to handle form submissions for adding a new note
 app.post('/add-note', async (req, res) => {
