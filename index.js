@@ -56,13 +56,13 @@ app.get('/', async (req, res) => {
   // Generate the HTML for the table rows
   const tableRows = data.map(row => `
     <tr>
-      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row.id}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${row.title}</td>
-      <td class="px-6 py-4 text-sm text-gray-500">${row.content}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+      <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row.id}</td>
+      <td class="px-3 py-2 sm:px-6 sm:py-4 text-sm text-gray-500">${row.title}</td>
+      <td class="px-3 py-2 sm:px-6 sm:py-4 text-sm text-gray-500">${row.content}</td>
+      <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
         <form action="/delete-note" method="POST">
           <input type="hidden" name="id" value="${row.id}">
-          <button type="submit" class="text-red-600 hover:text-red-900">
+          <button type="submit" class="p-2 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.728-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
             </svg>
@@ -92,7 +92,7 @@ app.get('/', async (req, res) => {
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
         
         <!-- Form to add new notes (improved layout) -->
-        <div class="bg-white shadow-lg rounded-lg overflow-hidden p-6">
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden p-4 sm:p-6">
           <h2 class="text-xl font-bold text-gray-900 mb-4">Add a New Note</h2>
           <form action="/add-note" method="POST" class="flex flex-col sm:flex-row items-end gap-4">
             <div class="flex-1 w-full">
@@ -123,13 +123,13 @@ app.get('/', async (req, res) => {
             </button>
           </div>
           <div id="table-container" class="overflow-x-auto hidden">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
-                  <th scope="col" class="relative px-6 py-3"><span class="sr-only">Delete</span></th>
+                  <th scope="col" class="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th scope="col" class="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th scope="col" class="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
+                  <th scope="col" class="relative px-3 py-2 sm:px-6 sm:py-3"><span class="sr-only">Delete</span></th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -145,6 +145,12 @@ app.get('/', async (req, res) => {
           const tableContainer = document.getElementById('table-container');
           const plusIcon = document.getElementById('toggle-icon-plus');
           const minusIcon = document.getElementById('toggle-icon-minus');
+          
+          if (tableContainer.children.length > 0 && tableContainer.children[0].getElementsByTagName('tbody')[0].getElementsByTagName('tr').length > 0) {
+            tableContainer.classList.remove('hidden');
+            plusIcon.classList.add('hidden');
+            minusIcon.classList.remove('hidden');
+          }
 
           toggleButton.addEventListener('click', function() {
             if (tableContainer.classList.contains('hidden')) {
