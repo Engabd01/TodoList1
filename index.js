@@ -13,8 +13,6 @@ const port = process.env.PORT || 3000;
 
 // Enable express to parse URL-encoded bodies (for form data)
 app.use(express.urlencoded({ extended: true }));
-// Enable express to parse JSON bodies (for our new AI endpoint)
-app.use(express.json());
 
 // Set up the PostgreSQL connection client using environment variables
 // Database Connection Setup
@@ -106,9 +104,6 @@ app.get('/', async (req, res) => {
               <textarea id="content" name="content" rows="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 resize-none" required></textarea>
             </div>
             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <button type="button" id="generate-ai-btn" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Generate with AI
-              </button>
               <button type="submit" class="w-full sm:w-auto inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 Add Note
               </button>
@@ -153,10 +148,6 @@ app.get('/', async (req, res) => {
           const tableContainer = document.getElementById('table-container');
           const plusIcon = document.getElementById('toggle-icon-plus');
           const minusIcon = document.getElementById('toggle-icon-minus');
-          const generateButton = document.getElementById('generate-ai-btn');
-          const titleInput = document.getElementById('title');
-          const contentInput = document.getElementById('content');
-          const errorMessageDiv = document.getElementById('error-message');
           
           if (tableContainer.children.length > 0 && tableContainer.children[0].getElementsByTagName('tbody')[0].getElementsByTagName('tr').length > 0) {
             tableContainer.classList.remove('hidden');
@@ -175,94 +166,12 @@ app.get('/', async (req, res) => {
               minusIcon.classList.add('hidden');
             }
           });
-          
-          // Function to generate a note using AI
-          generateButton.addEventListener('click', async () => {
-              // Show loading state and disable the button
-              generateButton.textContent = 'Generating...';
-              generateButton.disabled = true;
-              
-              // Clear previous inputs
-              titleInput.value = '';
-              contentInput.value = '';
-              errorMessageDiv.classList.add('hidden');
-
-              try {
-                  const response = await fetch('/generate-ai-note', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({}) // Sending an empty body
-                  });
-                  
-                  if (!response.ok) {
-                      throw new Error('Server-side AI generation failed.');
-                  }
-                  
-                  const { title, content } = await response.json();
-                  
-                  titleInput.value = title;
-                  contentInput.value = content;
-                  
-              } catch (error) {
-                  console.error('Error generating note:', error);
-                  errorMessageDiv.textContent = 'Error generating note. Please try again later.';
-                  errorMessageDiv.classList.remove('hidden');
-              } finally {
-                  // Revert button state
-                  generateButton.textContent = 'Generate with AI';
-                  generateButton.disabled = false;
-              }
-          });
         });
       </script>
     </body>
     </html>
   `);
 });
-
-// A new route to handle server-side AI note generation
-app.post('/generate-ai-note', async (req, res) => {
-    try {
-        const prompt = "Generate a short, creative note. The first line should be the title and the following lines should be the content.";
-        let chatHistory = [];
-        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-        const payload = { contents: chatHistory };
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-            console.error('API request failed:', response.status, await response.text());
-            return res.status(response.status).json({ error: 'Failed to fetch from Gemini API' });
-        }
-        
-        const result = await response.json();
-        
-        if (result.candidates && result.candidates.length > 0 &&
-            result.candidates[0].content && result.candidates[0].content.parts &&
-            result.candidates[0].content.parts.length > 0) {
-            const text = result.candidates[0].content.parts[0].text;
-            const lines = text.split('\n');
-            const title = lines[0].trim();
-            const content = lines.slice(1).join('\n').trim();
-
-            res.status(200).json({ title, content });
-        } else {
-            console.error('Unexpected API response structure:', result);
-            res.status(500).json({ error: 'Unexpected API response structure' });
-        }
-
-    } catch (error) {
-        console.error('Error in AI generation route:', error);
-        res.status(500).json({ error: 'Internal server error during AI generation' });
-    }
-});
-
 
 // Define a new POST route to handle form submissions for adding a new note
 app.post('/add-note', async (req, res) => {
